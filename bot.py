@@ -15,10 +15,9 @@ from sklearn.linear_model import LinearRegression
 # Логирование
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-# Получение токена из Railway (переменной окружения)
+# Получение токена из переменной окружения (Railway)
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Проверка токена
 if not TOKEN:
     raise ValueError("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь его в Railway → Variables!")
 
@@ -32,14 +31,13 @@ async def start(update: Update, context: CallbackContext) -> None:
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     await update.message.reply_text("Привет! Я твой финансовый бот. Записывай доходы и расходы, а я сделаю аналитику!", reply_markup=markup)
 
-# Обработка транзакций
+# Запись транзакций
 async def record_transaction(update: Update, context: CallbackContext) -> None:
     text = update.message.text
     try:
-        if len(text) > 10:  # Проверяем длину текста перед определением языка
-            detected_lang = langdetect.detect(text)
-            if detected_lang != "ru":
-                text = translator.translate(text)
+        detected_lang = langdetect.detect(text) if len(text) > 10 else "ru"
+        if detected_lang != "ru":
+            text = translator.translate(text)
     except Exception:
         await update.message.reply_text("Ошибка определения языка.")
         return
@@ -78,8 +76,8 @@ async def generate_report(update: Update, context: CallbackContext) -> None:
     
     report_text = f"📊 Финансовый отчет:\n💰 Доход: {total_income} сум\n💸 Расход: {total_expense} сум\n"
     
-    fig, ax = plt.subplots(figsize=(8, 6))
-    if not income.empty and not expense.empty:
+    if not income.empty or not expense.empty:
+        fig, ax = plt.subplots(figsize=(8, 6))
         categories = pd.concat([income, expense], axis=1).fillna(0)
         categories.columns = ["Доход", "Расход"]
         categories.plot(kind="bar", ax=ax, color=["green", "red"])
@@ -119,20 +117,21 @@ async def forecast(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Запуск бота (асинхронный, без проблем с event loop)
+# Запуск бота (ОБНОВЛЕННЫЙ МЕТОД)
 async def main():
-    try:
-        app = Application.builder().token(TOKEN).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
-        app.add_handler(CommandHandler("report", generate_report))
-        app.add_handler(CommandHandler("forecast", forecast))
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
+    app.add_handler(CommandHandler("report", generate_report))
+    app.add_handler(CommandHandler("forecast", forecast))
 
-        print("🚀 Бот запущен и работает!")
-        await app.run_polling()
-    except Exception as e:
-        print(f"❌ Ошибка при запуске бота: {e}")
+    print("🚀 Бот запущен и работает!")
+    await app.run_polling()
 
-# Запускаем event loop корректно
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
