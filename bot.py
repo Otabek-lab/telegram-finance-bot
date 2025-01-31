@@ -117,7 +117,7 @@ async def forecast(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Функция запуска бота (ИСПРАВЛЕНА)
+# Запуск бота
 async def run_bot():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -128,12 +128,8 @@ async def run_bot():
     print("🚀 Бот запущен и работает!")
     await app.run_polling()
 
-# Главный метод
+# Главный метод (ИСПРАВЛЕН)
 if __name__ == "__main__":
-    try:
-        asyncio.run(run_bot())
-    except RuntimeError:
-        print("⚠ Обнаружена проблема с event loop. Перезапускаем...")
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(run_bot())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_bot())
