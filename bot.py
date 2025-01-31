@@ -15,14 +15,12 @@ from sklearn.linear_model import LinearRegression
 # Логирование
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-# Получение токена из Railway (переменной окружения)
+# Получение токена из переменных Railway
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Проверка токена
 if not TOKEN:
     raise ValueError("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь его в Railway → Variables!")
 
-# Хранилище транзакций
 transactions = []
 translator = GoogleTranslator(source="auto", target="ru")
 
@@ -115,8 +113,8 @@ async def forecast(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Запуск бота
-async def main():
+# Запуск бота без ошибки event loop
+async def run():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
@@ -126,5 +124,6 @@ async def main():
     print("🚀 Бот запущен и работает!")
     await app.run_polling()
 
+# Исправленный запуск (без `asyncio.run()`)
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run())
