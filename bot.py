@@ -109,7 +109,7 @@ def forecast(update: Update, context: CallbackContext) -> None:
 
 # Основная функция
 async def main() -> None:
-    app = Application.builder().token("YOUR_TELEGRAM_BOT_TOKEN").build()
+    app = Application.builder().token("7160148421:AAFutJR4gqFwkfokRm7JKfhXqVqM4zL9120").build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
     app.add_handler(CommandHandler("report", generate_report))
