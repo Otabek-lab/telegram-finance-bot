@@ -15,13 +15,13 @@ from sklearn.linear_model import LinearRegression
 # Логирование
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-# Получение токена из переменной окружения (Railway)
+# Получение токена
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 if not TOKEN:
     raise ValueError("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь его в Railway → Variables!")
 
-# Хранилище транзакций
+# Хранилище данных
 transactions = []
 translator = GoogleTranslator(source="auto", target="ru")
 
@@ -117,8 +117,8 @@ async def forecast(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Запуск бота (ОБНОВЛЕННЫЙ МЕТОД)
-async def main():
+# Функция запуска бота (ИСПРАВЛЕНА)
+async def run_bot():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
@@ -128,10 +128,12 @@ async def main():
     print("🚀 Бот запущен и работает!")
     await app.run_polling()
 
+# Главный метод
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.run(run_bot())
     except RuntimeError:
+        print("⚠ Обнаружена проблема с event loop. Перезапускаем...")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(main())
+        loop.run_until_complete(run_bot())
