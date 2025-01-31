@@ -119,7 +119,7 @@ async def forecast(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Запуск бота (асинхронный, без `asyncio.run()`)
+# Запуск бота (асинхронный, без проблем с event loop)
 async def main():
     try:
         app = Application.builder().token(TOKEN).build()
@@ -133,6 +133,6 @@ async def main():
     except Exception as e:
         print(f"❌ Ошибка при запуске бота: {e}")
 
+# Запускаем event loop корректно
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())
