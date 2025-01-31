@@ -11,54 +11,61 @@ from datetime import datetime
 from deep_translator import GoogleTranslator
 from sklearn.linear_model import LinearRegression
 
-# Настройки логирования
+# Логирование
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# Получение токена из переменных окружения
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Проверка токена
+if not TOKEN:
+    raise ValueError("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь переменную окружения в Railway!")
 
 # Хранилище данных
 transactions = []
 translator = GoogleTranslator(source='auto', target='ru')
 
 # Команда /start
-def start(update: Update, context: CallbackContext) -> None:
+async def start(update: Update, context: CallbackContext) -> None:
     reply_keyboard = [['Доход', 'Расход', 'Отчет', 'Прогноз']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text("Привет! Я твой финансовый бот. Записывай доходы и расходы, а я сделаю аналитику!", reply_markup=markup)
+    await update.message.reply_text("Привет! Я твой финансовый бот. Записывай доходы и расходы, а я сделаю аналитику!", reply_markup=markup)
 
-# Обработка ввода с автоопределением языка
-def record_transaction(update: Update, context: CallbackContext) -> None:
+# Обработка транзакций
+async def record_transaction(update: Update, context: CallbackContext) -> None:
     text = update.message.text
     try:
         detected_lang = langdetect.detect(text)
         if detected_lang != 'ru':
             text = translator.translate(text)
-    except Exception as e:
-        update.message.reply_text("Ошибка определения языка.")
+    except Exception:
+        await update.message.reply_text("Ошибка определения языка.")
         return
-    
+
     words = text.split()
     if len(words) < 3:
-        update.message.reply_text("Используй формат: Доход 1000 Зарплата или Расход 500 Еда")
+        await update.message.reply_text("Используй формат: Доход 1000 Зарплата или Расход 500 Еда")
         return
     
     transaction_type = words[0].lower()
     if transaction_type not in ['доход', 'расход']:
-        update.message.reply_text("Ошибка: укажите 'Доход' или 'Расход' в начале сообщения.")
+        await update.message.reply_text("Ошибка: укажите 'Доход' или 'Расход' в начале сообщения.")
         return
     
     try:
         amount = float(words[1])
         category = ' '.join(words[2:])
     except ValueError:
-        update.message.reply_text("Ошибка: сумма должна быть числом.")
+        await update.message.reply_text("Ошибка: сумма должна быть числом.")
         return
-    
-    transactions.append({'date': datetime.now(), 'type': transaction_type, 'amount': amount, 'category': category})
-    update.message.reply_text(f"✅ Записано: {transaction_type} {amount} в категории {category}")
 
-# Генерация отчета в стиле Power BI
-def generate_report(update: Update, context: CallbackContext) -> None:
+    transactions.append({'date': datetime.now(), 'type': transaction_type, 'amount': amount, 'category': category})
+    await update.message.reply_text(f"✅ Записано: {transaction_type} {amount} в категории {category}")
+
+# Генерация отчета
+async def generate_report(update: Update, context: CallbackContext) -> None:
     if not transactions:
-        update.message.reply_text("❌ Нет данных для отчета.")
+        await update.message.reply_text("❌ Нет данных для отчета.")
         return
     
     df = pd.DataFrame(transactions)
@@ -76,24 +83,24 @@ def generate_report(update: Update, context: CallbackContext) -> None:
     ax.set_title('Доходы и Расходы по категориям')
     ax.set_ylabel('Сумма')
     plt.xticks(rotation=45)
-    
+
     buffer = BytesIO()
     plt.savefig(buffer, format='png')
     buffer.seek(0)
-    
-    update.message.reply_text(report_text)
-    update.message.bot.send_photo(update.message.chat_id, photo=buffer)
+
+    await update.message.reply_text(report_text)
+    await update.message.bot.send_photo(update.message.chat_id, photo=buffer)
 
 # Прогнозирование будущих расходов и доходов
-def forecast(update: Update, context: CallbackContext) -> None:
+async def forecast(update: Update, context: CallbackContext) -> None:
     if not transactions:
-        update.message.reply_text("❌ Нет данных для прогноза.")
+        await update.message.reply_text("❌ Нет данных для прогноза.")
         return
-    
+
     df = pd.DataFrame(transactions)
     df['date'] = pd.to_datetime(df['date'])
     df['days'] = (df['date'] - df['date'].min()).dt.days
-    
+
     for trans_type in ['доход', 'расход']:
         subset = df[df['type'] == trans_type]
         if len(subset) > 1:
@@ -103,27 +110,22 @@ def forecast(update: Update, context: CallbackContext) -> None:
             model.fit(X, y)
             future_days = np.array([[df['days'].max() + 7], [df['days'].max() + 30]])
             predictions = model.predict(future_days)
-            update.message.reply_text(f"📈 Прогноз для {trans_type}: \nЧерез неделю: {predictions[0]:.2f} сум\nЧерез месяц: {predictions[1]:.2f} сум")
+            await update.message.reply_text(f"📈 Прогноз для {trans_type}: \nЧерез неделю: {predictions[0]:.2f} сум\nЧерез месяц: {predictions[1]:.2f} сум")
         else:
-            update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
+            await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Основная функция
-async def main() -> None:
-    app = Application.builder().token("7160148421:AAFutJR4gqFwkfokRm7JKfhXqVqM4zL9120").build()
+# Основная функция запуска бота
+async def main():
+    app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
     app.add_handler(CommandHandler("report", generate_report))
     app.add_handler(CommandHandler("forecast", forecast))
+
+    print("🚀 Бот успешно запущен!")
     await app.run_polling()
 
 if __name__ == "__main__":
     import asyncio
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(main())
-
+    asyncio.run(main())
