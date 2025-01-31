@@ -15,12 +15,14 @@ from sklearn.linear_model import LinearRegression
 # Логирование
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-# Получение токена из переменных Railway
+# Получение токена из Railway (переменной окружения)
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+# Проверка токена
 if not TOKEN:
     raise ValueError("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь его в Railway → Variables!")
 
+# Хранилище транзакций
 transactions = []
 translator = GoogleTranslator(source="auto", target="ru")
 
@@ -34,9 +36,10 @@ async def start(update: Update, context: CallbackContext) -> None:
 async def record_transaction(update: Update, context: CallbackContext) -> None:
     text = update.message.text
     try:
-        detected_lang = langdetect.detect(text)
-        if detected_lang != "ru":
-            text = translator.translate(text)
+        if len(text) > 10:  # Проверяем длину текста перед определением языка
+            detected_lang = langdetect.detect(text)
+            if detected_lang != "ru":
+                text = translator.translate(text)
     except Exception:
         await update.message.reply_text("Ошибка определения языка.")
         return
@@ -76,19 +79,22 @@ async def generate_report(update: Update, context: CallbackContext) -> None:
     report_text = f"📊 Финансовый отчет:\n💰 Доход: {total_income} сум\n💸 Расход: {total_expense} сум\n"
     
     fig, ax = plt.subplots(figsize=(8, 6))
-    categories = pd.concat([income, expense], axis=1).fillna(0)
-    categories.columns = ["Доход", "Расход"]
-    categories.plot(kind="bar", ax=ax, color=["green", "red"])
-    ax.set_title("Доходы и Расходы по категориям")
-    ax.set_ylabel("Сумма")
-    plt.xticks(rotation=45)
+    if not income.empty and not expense.empty:
+        categories = pd.concat([income, expense], axis=1).fillna(0)
+        categories.columns = ["Доход", "Расход"]
+        categories.plot(kind="bar", ax=ax, color=["green", "red"])
+        ax.set_title("Доходы и Расходы по категориям")
+        ax.set_ylabel("Сумма")
+        plt.xticks(rotation=45)
 
-    buffer = BytesIO()
-    plt.savefig(buffer, format="png")
-    buffer.seek(0)
+        buffer = BytesIO()
+        plt.savefig(buffer, format="png")
+        buffer.seek(0)
 
-    await update.message.reply_text(report_text)
-    await update.message.bot.send_photo(update.message.chat_id, photo=buffer)
+        await update.message.reply_text(report_text)
+        await update.message.bot.send_photo(update.message.chat_id, photo=buffer)
+    else:
+        await update.message.reply_text("❌ Недостаточно данных для построения графика.")
 
 # Прогнозирование будущих доходов и расходов
 async def forecast(update: Update, context: CallbackContext) -> None:
@@ -113,17 +119,19 @@ async def forecast(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
-# Запуск бота без ошибки event loop
-async def run():
-    app = Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
-    app.add_handler(CommandHandler("report", generate_report))
-    app.add_handler(CommandHandler("forecast", forecast))
+# Запуск бота
+async def main():
+    try:
+        app = Application.builder().token(TOKEN).build()
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
+        app.add_handler(CommandHandler("report", generate_report))
+        app.add_handler(CommandHandler("forecast", forecast))
 
-    print("🚀 Бот запущен и работает!")
-    await app.run_polling()
+        print("🚀 Бот запущен и работает!")
+        await app.run_polling()
+    except Exception as e:
+        print(f"❌ Ошибка при запуске бота: {e}")
 
-# Исправленный запуск (без `asyncio.run()`)
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(main())
