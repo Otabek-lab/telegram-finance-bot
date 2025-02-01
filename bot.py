@@ -58,13 +58,11 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
-    loop.create_task(main())
-    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        logging.error(f"\u274C Ошибка: {e}. Используется существующий event loop.")
+        loop = asyncio.get_event_loop()
+        loop.create_task(main())
         loop.run_forever()
     except KeyboardInterrupt:
         logging.info("🛑 Бот остановлен пользователем.")
