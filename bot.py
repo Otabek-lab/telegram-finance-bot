@@ -20,7 +20,7 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # Проверка токена
 if not TOKEN:
-    raise ValueError("❌ Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь его в Railway → Variables!")
+    raise ValueError("\u274C Ошибка: TELEGRAM_BOT_TOKEN не найден. Добавь его в Railway → Variables!")
 
 # Хранилище транзакций
 transactions = []
@@ -36,7 +36,7 @@ async def start(update: Update, context: CallbackContext) -> None:
 async def record_transaction(update: Update, context: CallbackContext) -> None:
     text = update.message.text
     try:
-        if len(text) > 10:  # Проверяем длину текста перед определением языка
+        if len(text) > 10:
             detected_lang = langdetect.detect(text)
             if detected_lang != "ru":
                 text = translator.translate(text)
@@ -67,7 +67,7 @@ async def record_transaction(update: Update, context: CallbackContext) -> None:
 # Генерация отчета
 async def generate_report(update: Update, context: CallbackContext) -> None:
     if not transactions:
-        await update.message.reply_text("❌ Нет данных для отчета.")
+        await update.message.reply_text("\u274C Нет данных для отчета.")
         return
     
     df = pd.DataFrame(transactions)
@@ -94,12 +94,12 @@ async def generate_report(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text(report_text)
         await update.message.bot.send_photo(update.message.chat_id, photo=buffer)
     else:
-        await update.message.reply_text("❌ Недостаточно данных для построения графика.")
+        await update.message.reply_text("\u274C Недостаточно данных для построения графика.")
 
 # Прогнозирование будущих доходов и расходов
 async def forecast(update: Update, context: CallbackContext) -> None:
     if not transactions:
-        await update.message.reply_text("❌ Нет данных для прогноза.")
+        await update.message.reply_text("\u274C Нет данных для прогноза.")
         return
 
     df = pd.DataFrame(transactions)
@@ -120,18 +120,15 @@ async def forecast(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(f"⚠ Недостаточно данных для прогноза {trans_type}.")
 
 # Запуск бота
-async def run_bot():
-    try:
-        app = Application.builder().token(TOKEN).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
-        app.add_handler(CommandHandler("report", generate_report))
-        app.add_handler(CommandHandler("forecast", forecast))
+async def main():
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record_transaction))
+    app.add_handler(CommandHandler("report", generate_report))
+    app.add_handler(CommandHandler("forecast", forecast))
 
-        print("🚀 Бот запущен и работает!")
-        await app.run_polling()
-    except Exception as e:
-        print(f"❌ Ошибка при запуске бота: {e}")
+    print("🚀 Бот запущен и работает!")
+    await app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    asyncio.run(main())
