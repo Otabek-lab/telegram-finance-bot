@@ -8,25 +8,32 @@ from io import BytesIO
 from datetime import datetime
 from deep_translator import GoogleTranslator
 from sklearn.linear_model import LinearRegression
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Настройки логирования
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 # Получение токена из Railway (переменной окружения)
-TOKEN = "7160148421:AAFutJR4gqFwkfokRm7JKfhXqVqM4zL9120"  # Используем тестовый токен по умолчанию
+TOKEN = "7160148421:AAFutJR4gqFwkfokRm7JKfhXqVqM4zL9120"  # Используем реальный токен
 
 # Хранилище транзакций
 transactions = []
 translator = GoogleTranslator(source="auto", target="ru")
 
-# Заглушка для функционала Telegram API
-async def start():
-    print("Привет! Я твой финансовый бот. Записывай доходы и расходы, а я сделаю аналитику!")
+# Команда /start
+async def start(update: Update, context: CallbackContext) -> None:
+    reply_keyboard = [["Доход", "Расход", "Отчет", "Прогноз"]]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+    await update.message.reply_text("Привет! Я твой финансовый бот. Записывай доходы и расходы, а я сделаю аналитику!", reply_markup=markup)
 
 # Запуск бота
 async def main():
-    print("🚀 Бот запущен и работает! (Заглушка без Telegram API)")
-    await start()
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    
+    print("🚀 Бот запущен и работает!")
+    await app.run_polling()
 
 if __name__ == "__main__":
     try:
