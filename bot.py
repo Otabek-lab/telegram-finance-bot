@@ -8,18 +8,36 @@ from io import BytesIO
 from datetime import datetime
 from deep_translator import GoogleTranslator
 from sklearn.linear_model import LinearRegression
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+
+# Проверяем доступность библиотеки python-telegram-bot
+try:
+    import importlib.util
+    spec = importlib.util.find_spec("telegram")
+    if spec is None:
+        raise ModuleNotFoundError
+    from telegram import Update, ReplyKeyboardMarkup
+    from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+except ModuleNotFoundError:
+    logging.error("\u274C Ошибка: Библиотека 'python-telegram-bot' не установлена или недоступна.")
+    logging.error("Попробуйте установить её командой: pip install python-telegram-bot")
+    raise
 
 # Настройки логирования
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 # Получение токена из Railway (переменной окружения)
-TOKEN = "7160148421:AAFutJR4gqFwkfokRm7JKfhXqVqM4zL9120"  # Используем реальный токен
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    logging.error("\u274C Ошибка: TELEGRAM_BOT_TOKEN не установлен. Добавьте его в переменные окружения.")
+    raise ValueError("TOKEN not found")
 
 # Хранилище транзакций
 transactions = []
-translator = GoogleTranslator(source="auto", target="ru")
+try:
+    translator = GoogleTranslator(source="auto", target="ru")
+except Exception as e:
+    logging.warning(f"\u26A0 Ошибка при инициализации переводчика: {e}")
+    translator = None
 
 # Команда /start
 async def start(update: Update, context: CallbackContext) -> None:
@@ -32,10 +50,21 @@ async def main():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     
-    print("🚀 Бот запущен и работает!")
-    await app.run_polling()
+    logging.info("🚀 Бот запущен и работает!")
+    try:
+        await app.run_polling()
+    except Exception as e:
+        logging.error(f"\u274C Ошибка во время выполнения бота: {e}")
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
     loop.create_task(main())
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        logging.info("🛑 Бот остановлен пользователем.")
