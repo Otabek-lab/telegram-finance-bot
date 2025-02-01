@@ -1,1 +1,1 @@
-worker: python -m pip install
+worker: python bot.py
