@@ -9,11 +9,17 @@ from datetime import datetime
 from deep_translator import GoogleTranslator
 from sklearn.linear_model import LinearRegression
 
+# Для корректной работы с asyncio в Jupyter Notebook и Google Colab
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    logging.warning("\u26A0 nest_asyncio не установлен. Если используется Jupyter Notebook, установите его командой: pip install nest_asyncio")
+
 # Проверяем доступность библиотеки python-telegram-bot
 try:
     import importlib.util
-    spec = importlib.util.find_spec("telegram")
-    if spec is None:
+    if importlib.util.find_spec("telegram") is None:
         raise ModuleNotFoundError
     from telegram import Update, ReplyKeyboardMarkup
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
